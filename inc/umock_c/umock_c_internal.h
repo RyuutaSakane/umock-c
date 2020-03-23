@@ -7,9 +7,11 @@
 #ifdef __cplusplus
 #include <cstdlib>
 #include <cstdio>
+#include <csetjmp>
 #else
 #include <stdlib.h>
 #include <stdio.h>
+#include <setjmp.h>
 #endif
 
 #include "azure_macro_utils/macro_utils.h"
@@ -312,6 +314,50 @@ typedef int(*TRACK_DESTROY_FUNC_TYPE)(PAIRED_HANDLES* paired_handles, const void
         } \
         return mock_call_modifier; \
     } \
+
+#define IMPLEMENT_EXECUTE_CODE_FUNCTION(return_type, name, ...) \
+    static MU_C2(mock_call_modifier_,name) MU_C2(execute_code_func_,name)(void) \
+    { \
+        MU_C2(mock_call_, name)* mock_call_data = (MU_C2(mock_call_, name)*)umockcall_get_call_data(umock_c_get_last_expected_call()); \
+        DECLARE_MOCK_CALL_MODIFIER(name) \
+        if (mock_call_data == NULL) \
+        { \
+            UMOCK_LOG("ValidateAllArguments called without having an expected call."); \
+            umock_c_indicate_error(UMOCK_C_ERROR); \
+        } \
+        else \
+        { \
+            /* do nothing */ \
+        } \
+        return mock_call_modifier; \
+    } \
+
+#ifdef _MSC_VER
+#define UMOCK_WARNING_SUPPRESS(warn_no) \
+    __pragma(warning(suppress:warn_no))
+
+#else
+#define UMOCK_WARNING_SUPPRESS(warn_no)
+
+#endif
+
+#define EXECUTE_CODE(...) \
+    ExecuteCode(); \
+    { \
+        UMOCKCALL_HANDLE le_call = umock_c_get_last_expected_call(); \
+        jmp_buf* execute_jmp_buf_ptr = umockcall_get_execute_code(le_call); \
+        jmp_buf* return_jmp_buf_ptr = umockcall_get_return_execute_code(le_call); \
+        printf("execute_jmp_buf_ptr is %p\r\n", execute_jmp_buf_ptr); \
+        printf("return_jmp_buf_ptr is %p\r\n", return_jmp_buf_ptr); \
+        UMOCK_WARNING_SUPPRESS(4611) \
+        if (setjmp(*execute_jmp_buf_ptr) == 1) \
+        { \
+            __VA_ARGS__ \
+            printf("execute_jmp_buf_ptr is %p\r\n", execute_jmp_buf_ptr); \
+            printf("return_jmp_buf_ptr is %p\r\n", return_jmp_buf_ptr); \
+            longjmp(*return_jmp_buf_ptr, 1); \
+        } \
+    }
 
 /* Codes_SRS_UMOCK_C_LIB_01_078: [The IgnoreArgument_{arg_name} call modifier shall record that the argument identified by arg_name will be ignored for that specific call.] */
 #define IMPLEMENT_IGNORE_ARGUMENT_BY_NAME_FUNCTION(name, arg_type, arg_name) \
@@ -1020,6 +1066,7 @@ typedef struct MOCK_CALL_METADATA_TAG
     typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(ignore_all_calls_func_type_,name))(void); \
     MU_IF(MU_COUNT_ARG(__VA_ARGS__),typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(ignore_all_arguments_func_type_,name))(void); \
     typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(validate_all_arguments_func_type_,name))(void); \
+    typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(execute_code_func_type_,name))(void); \
     typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(copy_out_argument_func_type_,name))(size_t arg_index, void* value); \
     typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(ignore_argument_func_type_,name))(size_t arg_index); \
     typedef struct MU_C2(_mock_call_modifier_,name) (*MU_C2(validate_argument_func_type_,name))(size_t arg_index); \
@@ -1035,6 +1082,7 @@ typedef struct MOCK_CALL_METADATA_TAG
         MU_C2(capture_return_func_type_,name) CaptureReturn;,) \
         MU_IF(MU_COUNT_ARG(__VA_ARGS__),MU_C2(ignore_all_arguments_func_type_,name) IgnoreAllArguments; \
         MU_C2(validate_all_arguments_func_type_,name) ValidateAllArguments; \
+        MU_C2(execute_code_func_type_,name) ExecuteCode; \
         MU_C2(copy_out_argument_func_type_,name) CopyOutArgument; \
         MU_C2(ignore_argument_func_type_,name) IgnoreArgument; \
         MU_C2(validate_argument_func_type_,name) ValidateArgument; \
@@ -1049,6 +1097,7 @@ typedef struct MOCK_CALL_METADATA_TAG
     static MU_C2(mock_call_modifier_,name) MU_C2(capture_return_func_,name)(return_type* captured_return_value);,) \
     MU_IF(MU_COUNT_ARG(__VA_ARGS__),static MU_C2(mock_call_modifier_,name) MU_C2(ignore_all_arguments_func_,name)(void); \
     static MU_C2(mock_call_modifier_,name) MU_C2(validate_all_arguments_func_,name)(void); \
+    static MU_C2(mock_call_modifier_,name) MU_C2(execute_code_func_,name)(void); \
     static MU_C2(mock_call_modifier_,name) MU_C2(copy_out_argument_func_,name)(size_t arg_index, void* value); \
     static MU_C2(mock_call_modifier_,name) MU_C2(ignore_argument_func_,name)(size_t arg_index); \
     static MU_C2(mock_call_modifier_,name) MU_C2(validate_argument_func_,name)(size_t arg_index); \
@@ -1078,6 +1127,7 @@ typedef struct MOCK_CALL_METADATA_TAG
         mock_call_modifier->CaptureReturn = MU_C2(capture_return_func_,name);,) \
         MU_IF(MU_COUNT_ARG(__VA_ARGS__),mock_call_modifier->IgnoreAllArguments = MU_C2(ignore_all_arguments_func_,name); \
         mock_call_modifier->ValidateAllArguments = MU_C2(validate_all_arguments_func_,name); \
+        mock_call_modifier->ExecuteCode = MU_C2(execute_code_func_,name); \
         mock_call_modifier->CopyOutArgument = MU_C2(copy_out_argument_func_,name); \
         mock_call_modifier->IgnoreArgument = MU_C2(ignore_argument_func_,name); \
         mock_call_modifier->ValidateArgument = MU_C2(validate_argument_func_,name); \
@@ -1093,6 +1143,7 @@ typedef struct MOCK_CALL_METADATA_TAG
     } \
     typedef struct MU_C2(_mock_call_,name) \
     { \
+        MU_C2(mock_call_modifier_,name)* call_modifier; \
         MU_IF(IS_NOT_VOID(return_type),return_type return_value; \
         return_type fail_return_value; \
         return_type* captured_return_value;,) \
@@ -1236,6 +1287,7 @@ typedef struct MOCK_CALL_METADATA_TAG
     IMPLEMENT_CAPTURE_RETURN_FUNCTION(return_type, name, __VA_ARGS__),) \
     MU_IF(MU_COUNT_ARG(__VA_ARGS__),IMPLEMENT_IGNORE_ALL_ARGUMENTS_FUNCTION(return_type, name, __VA_ARGS__) \
     IMPLEMENT_VALIDATE_ALL_ARGUMENTS_FUNCTION(return_type, name, __VA_ARGS__) \
+    IMPLEMENT_EXECUTE_CODE_FUNCTION(return_type, name, __VA_ARGS__) \
     MU_FOR_EACH_2_KEEP_1(IMPLEMENT_IGNORE_ARGUMENT_BY_NAME_FUNCTION, name, __VA_ARGS__) \
     MU_FOR_EACH_2_KEEP_1(IMPLEMENT_VALIDATE_ARGUMENT_BY_NAME_FUNCTION, name, __VA_ARGS__) \
     IMPLEMENT_IGNORE_ARGUMENT_FUNCTION(return_type, name, __VA_ARGS__) \

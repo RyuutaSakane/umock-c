@@ -3,12 +3,15 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <setjmp.h>
 #include "umock_c/umockcall.h"
 #include "umock_c/umockalloc.h"
 #include "umock_c/umock_log.h"
 
 typedef struct UMOCKCALL_TAG
 {
+    jmp_buf execute_code_jmp_buf;
+    jmp_buf return_execute_code_jmp_buf;
     char* function_name;
     void* umockcall_data;
     UMOCKCALL_DATA_COPY_FUNC umockcall_data_copy;
@@ -201,6 +204,40 @@ void* umockcall_get_call_data(UMOCKCALL_HANDLE umockcall)
     }
 
     return umockcall_data;
+}
+
+jmp_buf* umockcall_get_execute_code(UMOCKCALL_HANDLE umockcall)
+{
+    jmp_buf* result;
+
+    if (umockcall == NULL)
+    {
+        UMOCK_LOG("Invalid arguments: UMOCKCALL_HANDLE umockcall=%p", umockcall);
+        result = NULL;
+    }
+    else
+    {
+        result = &umockcall->execute_code_jmp_buf;
+    }
+
+    return result;
+}
+
+jmp_buf* umockcall_get_return_execute_code(UMOCKCALL_HANDLE umockcall)
+{
+    jmp_buf* result;
+
+    if (umockcall == NULL)
+    {
+        UMOCK_LOG("Invalid arguments: UMOCKCALL_HANDLE umockcall=%p", umockcall);
+        result = NULL;
+    }
+    else
+    {
+        result = &umockcall->return_execute_code_jmp_buf;
+    }
+
+    return result;
 }
 
 /* Codes_SRS_UMOCKCALL_01_031: [ umockcall_clone shall clone a umock call and on success it shall return a handle to the newly cloned call. ] */

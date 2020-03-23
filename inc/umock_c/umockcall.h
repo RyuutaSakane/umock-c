@@ -6,8 +6,10 @@
 
 #ifdef __cplusplus
 #include <cstddef>
+#include <csetjmp>
 #else
 #include <stddef.h>
+#include <setjmp.h>
 #endif
 
 #ifdef __cplusplus
@@ -25,6 +27,8 @@ extern "C" {
     int umockcall_are_equal(UMOCKCALL_HANDLE left, UMOCKCALL_HANDLE right);
     char* umockcall_stringify(UMOCKCALL_HANDLE umockcall);
     void* umockcall_get_call_data(UMOCKCALL_HANDLE umockcall);
+    jmp_buf* umockcall_get_execute_code(UMOCKCALL_HANDLE umockcall);
+    jmp_buf* umockcall_get_return_execute_code(UMOCKCALL_HANDLE umockcall);
     UMOCKCALL_HANDLE umockcall_clone(UMOCKCALL_HANDLE umockcall);
     int umockcall_set_fail_call(UMOCKCALL_HANDLE umockcall, int fail_call);
     int umockcall_get_fail_call(UMOCKCALL_HANDLE umockcall);

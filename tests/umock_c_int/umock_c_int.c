@@ -3142,4 +3142,30 @@ TEST_FUNCTION(IGNORED_ARG_works_with_another_macro_wrapping_function_name)
     ASSERT_ARE_EQUAL(char_ptr, "", umock_c_get_actual_calls());
 }
 
+static void set_x(int* x)
+{
+    (void)x;
+    //*x = 43;
+}
+
+/* Tests_SRS_UMOCK_C_LIB_01_205: [ If IGNORED_ARG is used as an argument value with STRICT_EXPECTED_CALL, the argument shall be automatically ignored. ]*/
+TEST_FUNCTION(calling_a_function_as_modifier_works)
+{
+    // arrange
+    int x = 42;
+
+    STRICT_EXPECTED_CALL(test_dependency_1_arg_no_return(42))
+        .EXECUTE_CODE(
+                set_x(&x);
+            );
+
+    // act
+    test_dependency_1_arg_no_return(x);
+
+    // assert
+    ASSERT_ARE_EQUAL(int, 43, x);
+    ASSERT_ARE_EQUAL(char_ptr, "", umock_c_get_expected_calls(), "Wrong expected calls");
+    ASSERT_ARE_EQUAL(char_ptr, "", umock_c_get_actual_calls(), "Wrong actual calls");
+}
+
 END_TEST_SUITE(umock_c_integrationtests)

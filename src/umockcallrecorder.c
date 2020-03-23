@@ -207,6 +207,17 @@ int umockcallrecorder_add_actual_call(UMOCKCALLRECORDER_HANDLE umock_call_record
         if ((umock_call_recorder->actual_call_count == 0) && (i < umock_call_recorder->expected_call_count))
         {
             umock_call_recorder->expected_calls[i].is_matched = 1;
+
+            jmp_buf* execute_code_call = umockcall_get_execute_code(umock_call_recorder->expected_calls[i].umockcall);
+            jmp_buf* return_execute_code_call = umockcall_get_return_execute_code(umock_call_recorder->expected_calls[i].umockcall);
+            if (setjmp(*return_execute_code_call) == 1)
+            {
+                /* do nothing */
+            }
+            else
+            {
+                longjmp(*execute_code_call, 1);
+            }
         }
         else
         {
