@@ -3154,6 +3154,9 @@ TEST_FUNCTION(calling_a_function_as_modifier_works)
     // arrange
     int x = 42;
 
+    __asm { call next;
+    next: pop eax };
+
     STRICT_EXPECTED_CALL(test_dependency_1_arg_no_return(42))
         .EXECUTE_CODE(
                 set_x(&x);
